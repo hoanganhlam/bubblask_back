@@ -1,5 +1,6 @@
 from apps.general import models
 from rest_framework import serializers
+from apps.authentication.api.serializers import UserSerializer
 
 
 class HashTagSerializer(serializers.ModelSerializer):
@@ -12,3 +13,17 @@ class HashTagSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         return super(HashTagSerializer, self).to_representation(instance)
+
+
+class WSSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Workspace
+        fields = '__all__'
+        extra_kwargs = {
+            'code': {'read_only': True},
+            'user': {'read_only': True}
+        }
+
+    def to_representation(self, instance):
+        self.fields['user'] = UserSerializer(read_only=True)
+        return super(WSSerializer, self).to_representation(instance)

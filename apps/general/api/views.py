@@ -14,3 +14,17 @@ class HashTagViewSet(viewsets.ModelViewSet):
     filter_backends = [OrderingFilter, SearchFilter]
     search_fields = ['title', 'description']
     lookup_field = 'pk'
+
+
+class WSViewSet(viewsets.ModelViewSet):
+    models = models.Workspace
+    queryset = models.objects.order_by('-id')
+    serializer_class = serializers.WSSerializer
+    permission_classes = permissions.AllowAny,
+    pagination_class = pagination.Pagination
+    filter_backends = [OrderingFilter, SearchFilter]
+    search_fields = ['name']
+    lookup_field = 'pk'
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
