@@ -7,5 +7,6 @@ router.register(r'hash-tags', views.HashTagViewSet)
 router.register(r'workspaces', views.WSViewSet)
 
 urlpatterns = [
-    url(r'^', include(router.urls))
+    url(r'^', include(router.urls)),
+    url(r'^unsplash', views.get_unsplash)
 ]

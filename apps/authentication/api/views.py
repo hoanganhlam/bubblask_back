@@ -11,6 +11,7 @@ from rest_framework import viewsets, permissions
 from base import pagination
 from rest_framework.filters import OrderingFilter
 from rest_framework_jwt.settings import api_settings
+from apps.authentication.models import Profile
 from django.db import connection
 
 jwt_payload_handler = api_settings.JWT_PAYLOAD_HANDLER
@@ -27,6 +28,33 @@ class UserViewSet(viewsets.ModelViewSet):
     search_fields = ['first_name', 'last_name', 'username']
     lookup_field = 'username'
     lookup_value_regex = '[\w.@+-]+'
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', True)
+        instance = self.get_object()
+        if instance.id != request.user.id:
+            return Response({})
+        options = request.data.get("options")
+        is_strict = request.data.get("is_strict")
+        task_order = request.data.get("task_order")
+        if options:
+            instance.profile.setting = options
+            instance.profile.save()
+        if is_strict is not None:
+            instance.profile.setting["timer"]["is_strict"] = is_strict
+            instance.profile.save()
+        if task_order is not None:
+            instance.profile.setting["task_order"] = task_order
+            instance.profile.save()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        if getattr(instance, '_prefetched_objects_cache', None):
+            # If 'prefetch_related' has been applied to a queryset, we need to
+            # forcibly invalidate the prefetch cache on the instance.
+            instance._prefetched_objects_cache = {}
+        return Response(serializer.data)
 
 
 class UserExt(views.APIView):
