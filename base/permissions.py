@@ -1,4 +1,5 @@
 from rest_framework import permissions
+
 SAFE_METHODS = ('GET', 'HEAD', 'OPTIONS')
 
 
@@ -15,6 +16,22 @@ class IsSuperUserOrReadOnly(CorePermission):
                 if request.user.is_superuser:
                     return True
 
+        return False
+
+
+class IsSuperUserCanDeleteOrReadOnly(CorePermission):
+    def has_permission(self, request, view):
+        if request.user and request.user.is_authenticated:
+            if request.user.is_staff:
+                return True
+            else:
+                if request.method == "DELETE":
+                    return False
+                else:
+                    return True
+        else:
+            if request.method in permissions.SAFE_METHODS:
+                return True
         return False
 
 
@@ -55,8 +72,8 @@ class IsAuthenticatedStaffOrReadOnly(CorePermission):
 
     def has_permission(self, request, view):
         return (
-            request.method in SAFE_METHODS or
-            request.user and
-            request.user.is_authenticated or
-            request.user.is_staff
+                request.method in SAFE_METHODS or
+                request.user and
+                request.user.is_authenticated or
+                request.user.is_staff
         )

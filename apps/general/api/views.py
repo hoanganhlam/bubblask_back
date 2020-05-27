@@ -23,6 +23,11 @@ class HashTagViewSet(viewsets.ModelViewSet):
     search_fields = ['title', 'description']
     lookup_field = 'pk'
 
+    def list(self, request, *args, **kwargs):
+        if request.GET.get("for_model"):
+            self.queryset = self.queryset.filter(for_models__overlap=[request.GET.get("for_model")])
+        return super(HashTagViewSet, self).list(request, *args, **kwargs)
+
 
 class WSViewSet(viewsets.ModelViewSet):
     models = models.Workspace
@@ -36,6 +41,23 @@ class WSViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+
+@api_view(['POST'])
+def join_ws(request, pk):
+    status = False
+    ws = models.Workspace.objects.get(pk=pk)
+    password = request.data.get("password")
+    if request.user:
+        if request.user in ws.members.all():
+            ws.members.remove(request.user)
+            status = True
+        else:
+            if (ws.password and ws.password == password) or ws.password is None:
+                ws.members.add(request.user)
+                status = True
+        ws.save()
+    return Response({"status": status})
 
 
 @api_view(['GET'])

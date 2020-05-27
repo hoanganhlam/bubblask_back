@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, re_path
 from apps.authentication.api import views
 from rest_framework.routers import DefaultRouter
 from django.conf.urls import include, url
@@ -17,5 +17,6 @@ urlpatterns = [
     path('rest-auth/facebook/connect/', views.FacebookConnect.as_view(), name='facebook_connect'),
     path('rest-auth/google/', views.GoogleLogin.as_view(), name='google_login'),
     path('rest-auth/google/connect/', views.GoogleConnect.as_view(), name='google_connect'),
+    path('registration/', include('rest_auth.registration.urls')),
     url(r'^', include(router.urls)),
 ]

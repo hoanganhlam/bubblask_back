@@ -11,8 +11,7 @@ from rest_framework import viewsets, permissions
 from base import pagination
 from rest_framework.filters import OrderingFilter
 from rest_framework_jwt.settings import api_settings
-from apps.authentication.models import Profile
-from django.db import connection
+from rest_framework import status
 
 jwt_payload_handler = api_settings.JWT_PAYLOAD_HANDLER
 jwt_encode_handler = api_settings.JWT_ENCODE_HANDLER
@@ -37,14 +36,22 @@ class UserViewSet(viewsets.ModelViewSet):
         options = request.data.get("options")
         is_strict = request.data.get("is_strict")
         task_order = request.data.get("task_order")
+        task_graph_setting = request.data.get("task_graph_setting")
+        if instance.profile.setting is None:
+            instance.profile.setting = {}
         if options:
             instance.profile.setting = options
             instance.profile.save()
         if is_strict is not None:
+            if instance.profile.setting["timer"] is None:
+                instance.profile.setting["timer"] = {}
             instance.profile.setting["timer"]["is_strict"] = is_strict
             instance.profile.save()
         if task_order is not None:
             instance.profile.setting["task_order"] = task_order
+            instance.profile.save()
+        if task_graph_setting is not None:
+            instance.profile.setting["task_graph_setting"] = task_graph_setting
             instance.profile.save()
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
@@ -55,6 +62,10 @@ class UserViewSet(viewsets.ModelViewSet):
             # forcibly invalidate the prefetch cache on the instance.
             instance._prefetched_objects_cache = {}
         return Response(serializer.data)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class UserExt(views.APIView):

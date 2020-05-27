@@ -16,9 +16,11 @@ class HashTagSerializer(serializers.ModelSerializer):
 
 
 class WSSerializer(serializers.ModelSerializer):
+    isPrivate = serializers.SerializerMethodField()
+
     class Meta:
         model = models.Workspace
-        fields = '__all__'
+        fields = ['id', 'name', 'code', 'members', 'user', 'setting', 'isPrivate']
         extra_kwargs = {
             'code': {'read_only': True},
             'user': {'read_only': True}
@@ -27,3 +29,9 @@ class WSSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         self.fields['user'] = UserSerializer(read_only=True)
         return super(WSSerializer, self).to_representation(instance)
+
+    def get_isPrivate(self, instance):
+        if instance.password is not None:
+            return True
+        else:
+            return False

@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'allauth.socialaccount.providers.facebook',
     'allauth.socialaccount.providers.google',
     'rest_auth.registration',
+    'apps.media',
     'apps.general',
     'apps.authentication',
     'apps.task',
@@ -203,3 +204,4 @@ ACCOUNT_AUTHENTICATION_METHOD = 'email'
 REST_AUTH_REGISTER_SERIALIZERS = {
     'REGISTER_SERIALIZER': 'apps.authentication.api.serializers.NameRegistrationSerializer',
 }
+ACCOUNT_EMAIL_VERIFICATION = 'optional'
