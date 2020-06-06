@@ -103,7 +103,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': os.getenv('POSTGRES_DBNAME', 'bubblask'),
         'USER': os.getenv('POSTGRES_USER', 'lam'),
-        'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'Hoanganhlam@no99'),
+        'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'HoangAnhLam@no99a'),
         'HOST': os.getenv('POSTGRES_HOST', 'localhost'),
         'PORT': os.getenv('POSTGRES_PORT', '5432'),
     }
