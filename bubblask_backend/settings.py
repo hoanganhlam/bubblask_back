@@ -143,10 +143,21 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.0/howto/static-files/
 
+DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+STATICFILES_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+
+AWS_STORAGE_BUCKET_NAME = 'public'
+AWS_BUCKET_ACL = 'public-read'
+AWS_DEFAULT_ACL = 'public-read'
+AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME') or 'sgp1'
+AWS_S3_ENDPOINT_URL = os.getenv('AWS_S3_ENDPOINT_URL') or 'https://bubblask.sgp1.digitaloceanspaces.com'
+AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID') or 'AAONGXRBJP5L2P4GKU2U'
+AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY') or 'XQq7p23g0CQ/p12+vAGFca92IJF8+rzDJSwIub4Sd4E'
 STATIC_URL = '/static/'
 MEDIA_URL = '/media/'
 THUMBNAIL_FORCE_OVERWRITE = True
 THUMBNAIL_BACKEND = 'apps.media.backend.CThumbnailBackend'
+
 
 # JWT
 
