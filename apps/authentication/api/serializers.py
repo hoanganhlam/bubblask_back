@@ -1,15 +1,17 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from apps.authentication.models import Profile
+from apps.media.api.serializers import MediaSerializer
 from rest_auth.registration.serializers import RegisterSerializer
 
 
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
-        fields = ['id', 'media', 'bio', 'nick', 'setting', 'extra']
+        fields = ['id', 'media', 'bio', 'nick', 'setting', 'extra', 'links']
 
     def to_representation(self, instance):
+        self.fields['media'] = MediaSerializer(read_only=True)
         return super(ProfileSerializer, self).to_representation(instance)
 
 
@@ -27,6 +29,26 @@ class UserSerializer(serializers.ModelSerializer):
             profile = Profile(user=instance)
             profile.save()
             return ProfileSerializer(profile).data
+
+
+class UserReportSerializer(serializers.ModelSerializer):
+    profile = serializers.SerializerMethodField()
+    total_time = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = ['id', 'first_name', 'last_name', 'username', 'profile', 'total_time']
+
+    def get_profile(self, instance):
+        if hasattr(instance, 'profile'):
+            return ProfileSerializer(instance.profile).data
+        else:
+            profile = Profile(user=instance)
+            profile.save()
+            return ProfileSerializer(profile).data
+
+    def get_total_time(self, instance):
+        return 0
 
 
 class NameRegistrationSerializer(RegisterSerializer):

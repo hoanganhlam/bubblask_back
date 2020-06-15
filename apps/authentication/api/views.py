@@ -3,7 +3,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.contrib.auth.models import User
-from apps.authentication.api.serializers import UserSerializer
+from apps.authentication.api.serializers import UserSerializer, UserReportSerializer
+from apps.media.models import Media
 from allauth.socialaccount.providers.facebook.views import FacebookOAuth2Adapter
 from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
 from rest_auth.registration.views import SocialLoginView
@@ -28,11 +29,16 @@ class UserViewSet(viewsets.ModelViewSet):
     lookup_field = 'username'
     lookup_value_regex = '[\w.@+-]+'
 
+    def list(self, request, *args, **kwargs):
+        self.serializer_class = UserReportSerializer
+        return super(UserViewSet, self).list(request, *args, **kwargs)
+
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', True)
         instance = self.get_object()
         if instance.id != request.user.id:
             return Response({})
+        profile = request.data.get("profile")
         options = request.data.get("options")
         is_strict = request.data.get("is_strict")
         task_order = request.data.get("task_order")
@@ -40,19 +46,26 @@ class UserViewSet(viewsets.ModelViewSet):
         if instance.profile.setting is None:
             instance.profile.setting = {}
         if options:
-            instance.profile.setting = options
-            instance.profile.save()
+            for key in options.keys():
+                instance.profile.setting[key] = options[key]
         if is_strict is not None:
             if instance.profile.setting["timer"] is None:
                 instance.profile.setting["timer"] = {}
             instance.profile.setting["timer"]["is_strict"] = is_strict
-            instance.profile.save()
         if task_order is not None:
             instance.profile.setting["task_order"] = task_order
             instance.profile.save()
         if task_graph_setting is not None:
             instance.profile.setting["task_graph_setting"] = task_graph_setting
-            instance.profile.save()
+        if profile:
+            instance.profile.links = profile.get("links")
+            instance.profile.bio = profile.get("bio")
+            instance.profile.extra = profile.get("extra")
+            media = profile.get("media")
+            if media:
+                media_instance = Media.objects.get(pk=int(media))
+                instance.profile.media = media_instance
+        instance.profile.save()
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)

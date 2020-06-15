@@ -1,4 +1,6 @@
 from apps.task import models
+from apps.general.api.serializers import HashTagSerializer
+from apps.media.api.serializers import MediaSerializer
 from rest_framework import serializers
 
 
@@ -11,6 +13,8 @@ class BoardSerializer(serializers.ModelSerializer):
         }
 
     def to_representation(self, instance):
+        self.fields['hash_tags'] = HashTagSerializer(read_only=True, many=True)
+        self.fields['media'] = MediaSerializer(read_only=True)
         return super(BoardSerializer, self).to_representation(instance)
 
 

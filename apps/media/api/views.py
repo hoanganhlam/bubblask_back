@@ -4,7 +4,6 @@ from base import pagination
 from . import serializers
 from apps.media import models
 from rest_framework.response import Response
-from rest_framework.decorators import api_view
 
 
 # from datetime import datetime

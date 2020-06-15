@@ -11,4 +11,6 @@ class Profile(models.Model):
     medals = ArrayField(models.CharField(max_length=80), null=True, blank=True)
     media = models.ForeignKey(Media, on_delete=models.SET_NULL, null=True, blank=True, related_name="profiles")
     extra = JSONField(blank=True, null=True)
+    links = JSONField(blank=True, null=True)
     setting = JSONField(blank=True, null=True)
+    time_zone = models.IntegerField(default=0)

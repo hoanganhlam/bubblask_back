@@ -19,7 +19,8 @@ class Workspace(BaseModel):
     password = models.CharField(max_length=50, null=True, blank=True)
     members = models.ManyToManyField(User, blank=True, related_name="workspaces")
     user = models.ForeignKey(User, related_name="managed_workspaces", on_delete=models.CASCADE)
-    setting = JSONField(blank=True, null=True)
+    settings = JSONField(blank=True, null=True)
+    is_public = models.BooleanField(default=True)
 
     def save(self, **kwargs):
         unique_slugify(self, self.name, slug_field_name="code", slug_separator="_")

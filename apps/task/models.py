@@ -3,9 +3,10 @@ from base.interface import BaseModel
 from django.contrib.auth.models import User
 from django.contrib.postgres.fields import ArrayField, JSONField
 from django.utils.translation import ugettext_lazy as _
-from apps.general.models import HashTag
+from apps.general.models import HashTag, Workspace
 from apps.media.models import Media
 from utils.slug import unique_slugify
+from django.utils import timezone
 
 
 # Create your models here.
@@ -19,6 +20,7 @@ def default_time():
     }
 
 
+# Use public board and private board
 class Board(BaseModel):
     title = models.CharField(max_length=200, null=True, blank=True)
     description = models.CharField(max_length=500, null=True, blank=True)
@@ -30,6 +32,7 @@ class Board(BaseModel):
     user = models.ForeignKey(User, related_name="boards", on_delete=models.CASCADE)
     parent = models.ForeignKey('self', related_name="children", on_delete=models.SET_NULL, null=True, blank=True)
     members = models.ManyToManyField(User, blank=True, related_name="member_boards")
+    ws = models.OneToOneField(Workspace, related_name="board", on_delete=models.SET_NULL, null=True, blank=True)
 
     def save(self, **kwargs):
         # generate unique slug
@@ -57,5 +60,24 @@ class Task(BaseModel):
     settings = JSONField(null=True, blank=True)
 
     user = models.ForeignKey(User, related_name="tasks", on_delete=models.CASCADE)
+    assignee = models.ForeignKey(User, related_name="assigned_tasks", on_delete=models.CASCADE, null=True, blank=True)
+    reporter = models.ForeignKey(User, related_name="reported_tasks", on_delete=models.CASCADE, null=True, blank=True)
+
     parent = models.ForeignKey('self', related_name="children", on_delete=models.SET_NULL, null=True, blank=True)
     board = models.ForeignKey(Board, related_name="tasks", on_delete=models.SET_NULL, null=True, blank=True)
+
+
+class Tracking(models.Model):
+    # Time to deep work
+    # How many time to work on a day
+    # Total time spend to work all time
+    # Total task work done
+    # Total task skipped
+    user = models.ForeignKey(User, related_name="tracking", on_delete=models.CASCADE)
+    ws = models.ForeignKey(Workspace, related_name="tracking", on_delete=models.SET_NULL, null=True, blank=True)
+    # time_start
+    # time_stop
+    # task
+    data = ArrayField(JSONField(null=True, blank=True), null=True, blank=True)
+    date_record = models.DateTimeField(default=timezone.now)
+    time_zone = models.IntegerField(default=0)

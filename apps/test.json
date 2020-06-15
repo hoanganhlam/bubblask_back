@@ -1,0 +1,283 @@
+{
+    "color": {
+        "background": null,
+        "--btn-color": "#cd2653",
+        "--task-color": "#FFF",
+        "--btn-text-color": "#FFF",
+        "--task-text-color": "#333333",
+        "--bg-color-primary": "#66697D",
+        "--bg-color-secondary": "#ffffff",
+        "--bg-color-primary-text": "#FFFFFF",
+        "--bg-color-secondary-text": "#333333"
+    },
+    "timer": {
+        "tomato": 25,
+        "is_strict": false,
+        "long_break": 10,
+        "short_break": 5
+    },
+    "task_order": [
+        4,
+        1,
+        7,
+        3,
+        18
+    ],
+    "notification": {
+        "wake_me": 5
+    },
+    "task_graph_setting": {
+        "T0": {
+            "top": 340,
+            "left": 534
+        },
+        "T1": {
+            "p1c": 7,
+            "p2c": 3,
+            "top": 46,
+            "left": -568,
+            "arrow": "bottom",
+            "vertical": false
+        },
+        "T3": {
+            "p1c": 5,
+            "p2c": 1,
+            "top": 97,
+            "left": -1,
+            "arrow": "bottom",
+            "vertical": true
+        },
+        "T4": {
+            "p1c": 3,
+            "p2c": 7,
+            "top": -233,
+            "left": 565,
+            "arrow": "bottom",
+            "vertical": false
+        },
+        "T5": {
+            "p1c": 3,
+            "p2c": 7,
+            "top": 161,
+            "left": 345,
+            "arrow": "bottom",
+            "vertical": false
+        },
+        "T6": {
+            "p1c": 3,
+            "p2c": 7,
+            "top": -47,
+            "left": 345,
+            "arrow": "bottom",
+            "vertical": false
+        },
+        "T7": {
+            "p1c": 3,
+            "p2c": 7,
+            "top": 126,
+            "left": 382,
+            "arrow": "bottom",
+            "vertical": false
+        },
+        "T8": {
+            "p1c": 3,
+            "p2c": 7,
+            "top": 64,
+            "left": 362,
+            "arrow": "bottom",
+            "vertical": false
+        },
+        "T9": {
+            "p1c": 3,
+            "p2c": 7,
+            "top": -249,
+            "left": 392,
+            "arrow": "bottom",
+            "vertical": false
+        },
+        "T10": {
+            "p1c": 3,
+            "p2c": 7,
+            "top": -46,
+            "left": 343,
+            "arrow": "bottom",
+            "vertical": false
+        },
+        "T11": {
+            "p1c": 3,
+            "p2c": 7,
+            "top": -139,
+            "left": 347,
+            "arrow": "bottom",
+            "vertical": false
+        },
+        "T13": {
+            "p1c": 3,
+            "p2c": 7,
+            "top": -46,
+            "left": 341,
+            "arrow": "bottom",
+            "vertical": false
+        },
+        "T15": {
+            "p1c": 3,
+            "p2c": 7,
+            "top": -112,
+            "left": 533,
+            "arrow": "bottom",
+            "vertical": false
+        },
+        "T16": {
+            "p1c": 3,
+            "p2c": 7,
+            "top": 95,
+            "left": 594,
+            "arrow": "bottom",
+            "vertical": false
+        },
+        "T17": {
+            "p1c": 3,
+            "p2c": 7,
+            "top": 213,
+            "left": 430,
+            "arrow": "bottom",
+            "vertical": false
+        },
+        "T18": {
+            "p1c": 7,
+            "p2c": 3,
+            "top": -138,
+            "left": -432,
+            "arrow": "bottom",
+            "vertical": false
+        },
+        "T19": {
+            "p1c": 5,
+            "p2c": 1,
+            "top": 110,
+            "left": -318,
+            "arrow": "bottom",
+            "vertical": true
+        },
+        "T20": {
+            "p1c": 5,
+            "p2c": 1,
+            "top": 174,
+            "left": 192,
+            "arrow": "bottom",
+            "vertical": true
+        },
+        "T21": {
+            "p1c": 5,
+            "p2c": 1,
+            "top": 181,
+            "left": 354,
+            "arrow": "bottom",
+            "vertical": true
+        },
+        "T22": {
+            "p1c": 3,
+            "p2c": 7,
+            "top": -20,
+            "left": 511,
+            "arrow": "bottom",
+            "vertical": false
+        },
+        "T23": {
+            "p1c": 5,
+            "p2c": 1,
+            "top": 143,
+            "left": -354,
+            "arrow": "bottom",
+            "vertical": true
+        },
+        "T24": {
+            "p1c": 3,
+            "p2c": 7,
+            "top": -191,
+            "left": 495,
+            "arrow": "bottom",
+            "vertical": false
+        },
+        "T25": {
+            "p1c": 1,
+            "p2c": 5,
+            "top": -192,
+            "left": -165,
+            "arrow": "bottom",
+            "vertical": true
+        },
+        "T63": {
+            "p1c": 1,
+            "p2c": 5,
+            "top": -224,
+            "left": -21,
+            "arrow": "bottom",
+            "vertical": true
+        },
+        "T64": {
+            "p1c": 7,
+            "p2c": 3,
+            "top": 45,
+            "left": -303,
+            "arrow": "bottom",
+            "vertical": false
+        },
+        "T65": {
+            "p1c": 1,
+            "p2c": 5,
+            "top": -180,
+            "left": 49,
+            "arrow": "bottom",
+            "vertical": true
+        },
+        "T66": {
+            "p1c": 5,
+            "p2c": 1,
+            "top": 125,
+            "left": 118,
+            "arrow": "bottom",
+            "vertical": true
+        },
+        "T67": {
+            "p1c": 3,
+            "p2c": 7,
+            "top": -64,
+            "left": 591,
+            "arrow": "bottom",
+            "vertical": false
+        },
+        "T68": {
+            "p1c": 5,
+            "p2c": 1,
+            "top": 199,
+            "left": -162,
+            "arrow": "bottom",
+            "vertical": true
+        },
+        "T71": {
+            "p1c": 5,
+            "p2c": 1,
+            "arrow": "bottom",
+            "vertical": true
+        },
+        "T80": {
+            "p1c": 5,
+            "p2c": 1,
+            "arrow": "bottom",
+            "vertical": true
+        },
+        "T81": {
+            "p1c": 5,
+            "p2c": 1,
+            "arrow": "bottom",
+            "vertical": true
+        },
+        "T82": {
+            "p1c": 5,
+            "p2c": 1,
+            "arrow": "bottom",
+            "vertical": true
+        }
+    }
+}
