@@ -82,17 +82,20 @@ def join_ws(request, pk):
     ws = models.Workspace.objects.get(pk=pk)
     password = request.data.get("password")
     if request.user:
-        if request.user in ws.members.all():
+        current_ws = request.user.profile.setting.get("ws", None)
+        if request.user in ws.members.all() and current_ws != ws.id:
             ws.members.remove(request.user)
             status = True
             msg = "OUT_COMPLETE"
         else:
             if request.user.id == ws.user.id:
-                ws.members.add(request.user)
+                if not (request.user in ws.members.all()):
+                    ws.members.add(request.user)
                 status = True
                 msg = "JOIN_COMPLETE"
             elif (ws.password and ws.password == password) or ws.password is None:
-                ws.members.add(request.user)
+                if not (request.user in ws.members.all()):
+                    ws.members.add(request.user)
                 status = True
                 msg = "JOIN_COMPLETE"
             else:
