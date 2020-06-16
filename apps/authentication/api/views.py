@@ -77,8 +77,8 @@ class UserViewSet(viewsets.ModelViewSet):
             instance.profile.time_zone = time_zone
         if user_status:
             instance.profile.extra["status"] = user_status
-            if ws != 0:
-                pusher_client.trigger('ws_' + ws, 'change-user-status', {
+            if ws is not None and ws != 0:
+                pusher_client.trigger('ws_' + str(ws), 'change-user-status', {
                     "user": instance.id,
                     "status": user_status
                 })
