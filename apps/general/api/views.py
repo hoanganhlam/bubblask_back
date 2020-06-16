@@ -83,7 +83,7 @@ def join_ws(request, pk):
     password = request.data.get("password")
     if request.user:
         current_ws = request.user.profile.setting.get("ws", None)
-        if request.user in ws.members.all() and current_ws != ws.id:
+        if request.user in ws.members.all() and current_ws == ws.id:
             ws.members.remove(request.user)
             status = True
             msg = "OUT_COMPLETE"
