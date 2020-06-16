@@ -13,6 +13,9 @@ from base import pagination
 from rest_framework.filters import OrderingFilter
 from rest_framework_jwt.settings import api_settings
 from rest_framework import status
+from rest_framework import serializers
+from apps.task.models import Tracking, Task
+from utils.pusher import pusher_client
 
 jwt_payload_handler = api_settings.JWT_PAYLOAD_HANDLER
 jwt_encode_handler = api_settings.JWT_ENCODE_HANDLER
@@ -38,13 +41,18 @@ class UserViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         if instance.id != request.user.id:
             return Response({})
+        ws = instance.profile.setting.get("ws", 0)
+        user_status = request.data.get("status")
         profile = request.data.get("profile")
         options = request.data.get("options")
         is_strict = request.data.get("is_strict")
         task_order = request.data.get("task_order")
         task_graph_setting = request.data.get("task_graph_setting")
+        time_zone = request.data.get("time_zone")
         if instance.profile.setting is None:
             instance.profile.setting = {}
+        if instance.profile.extra is None:
+            instance.profile.extra = {}
         if options:
             for key in options.keys():
                 instance.profile.setting[key] = options[key]
@@ -65,6 +73,15 @@ class UserViewSet(viewsets.ModelViewSet):
             if media:
                 media_instance = Media.objects.get(pk=int(media))
                 instance.profile.media = media_instance
+        if time_zone:
+            instance.profile.time_zone = time_zone
+        if user_status:
+            instance.profile.extra["status"] = user_status
+            if ws != 0:
+                pusher_client.trigger('ws_' + ws, 'change-user-status', {
+                    "user": instance.id,
+                    "status": user_status
+                })
         instance.profile.save()
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
@@ -106,3 +123,27 @@ class GoogleLogin(SocialLoginView):
 
 class GoogleConnect(SocialLoginView):
     adapter_class = GoogleOAuth2Adapter
+
+
+class TrackingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Tracking
+        fields = '__all__'
+
+
+@api_view(['GET'])
+def report(request, pk):
+    user = User.objects.get(pk=pk)
+    tracking = user.tracking.filter(user=user)
+    tasks = Task.objects.filter(user=user)
+    complete_tasks = tasks.filter(status="complete")
+    accurate_estimates_arr = list(
+        map(lambda x: abs(60 * x.tomato * x.interval - x.take_time) / 60 * x.tomato * x.interval,
+            list(complete_tasks)))
+    mean_accurate_estimates = sum(accurate_estimates_arr) / len(accurate_estimates_arr)
+    return Response({
+        "total_task_done": complete_tasks.count(),
+        "total_task_delay": tasks.filter(status="stopped").count(),
+        "accurate_estimates": mean_accurate_estimates,  # in second
+        "tracking": TrackingSerializer(tracking, many=True).data,
+    })

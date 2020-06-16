@@ -10,7 +10,9 @@ from django.db.models import Q
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.utils import timezone
-
+from datetime import datetime, timedelta
+from django.utils.dateparse import parse_datetime
+from utils.pusher import pusher_client
 
 class BoardViewSet(viewsets.ModelViewSet):
     models = models.Board
@@ -124,35 +126,61 @@ class TaskViewSet(viewsets.ModelViewSet):
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', True)
         instance = self.get_object()
+        old_stt = instance.status
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
         if getattr(instance, '_prefetched_objects_cache', None):
             instance._prefetched_objects_cache = {}
+        new_stt = instance.status
         # Start Tracking
-        now = timezone.now()
-        print(now)
-
-        # => Tim localtime
-        # => Check localtime
-        # => tao tracking
-        # => lay lastime tracking
-
-        # ws = None
-        # tz = request.user.profile.time_zone or 0
-        # if request.data.get("ws"):
-        #     ws = Workspace.objects.get(pk=int(request.data.get("ws")))
-        # tracking = models.Tracking.objects.filter(user=request.user, ws=ws, time_zone=tz).first()
-        # if tracking is None:
-        #     tracking = models.Tracking(user=request.user, ws=ws, time_zone=tz)
-        #
-        # if request.data.get("status") == "complete":
-        #     pass
-        # elif request.data.get("status") == "stopping" or request.data.get("status") == "stopped":
-        #     pass
-        # elif request.data.get("status") == "running":
-        #     pass
-        # tracking.save()
+        if old_stt != new_stt and instance.children.count() == 0:
+            print("A")
+            now = timezone.now()
+            ws = None
+            user_tz = request.user.profile.time_zone
+            local_time = now + timedelta(hours=user_tz)
+            local_date = local_time.date()
+            if request.data.get("ws"):
+                ws = Workspace.objects.get(pk=int(request.data.get("ws")))
+            tracking = models.Tracking.objects.filter(user=request.user, time_zone=user_tz,
+                                                      date_record=local_date).first()
+            if tracking is None:
+                tracking = models.Tracking(user=request.user, time_zone=user_tz, date_record=local_date)
+            if tracking.data is None:
+                tracking.data = []
+            if request.data.get("status") in ["complete", "stopping", "stopped"]:
+                if len(tracking.data) > 0:
+                    if tracking.data[len(tracking.data) - 1]:
+                        start_time = tracking.data[len(tracking.data) - 1].get("time_start")
+                        time_taken = (now - parse_datetime(start_time)).total_seconds()
+                        tracking.data[len(tracking.data) - 1]["time_stop"] = str(now)
+                        tracking.data[len(tracking.data) - 1]["time_taken"] = time_taken
+                        if request.data.get("status") == "complete":
+                            instance.take_time = sum(c.get("time_taken", 0) for c in tracking.data)
+                            instance.save()
+                        if request.user.profile.extra is None:
+                            request.user.profile.extra = {}
+                        request.user.profile.extra["temp_score"] = request.user.profile.extra.get("temp_score", 0) + time_taken
+                        if ws is not None:
+                            if ws.report is None:
+                                ws.report = {}
+                            ws.report[request.user.id] = ws.report.get(str(request.user.id), 0) + time_taken
+                            pusher_client.trigger('ws_' + str(ws.id), 'change-user-score', {
+                                "user": request.user.id,
+                                "score": ws.report.get(str(request.user.id), 0) + time_taken
+                            })
+                            ws.save()
+                        request.user.profile.save()
+            elif request.data.get("status") == "running":
+                tracking.data.append({
+                    "time_start": str(now),
+                    "time_stop": None,
+                    "time_taken": 0,
+                    "task": instance.id,
+                    "ws": ws.id if ws is not None else None
+                })
+            tracking.save()
         return Response(serializer.data)
 
 
@@ -177,7 +205,8 @@ def clone_board(request, pk):
             is_bubble=task.is_bubble,
             settings=task.settings,
             board=new_board,
-            user=request.user
+            user=request.user,
+            status="pending"
         )
         new_task.save()
         new_tasks.append(new_task)

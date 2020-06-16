@@ -53,7 +53,7 @@ class Task(BaseModel):
     title = models.CharField(max_length=200, null=True, blank=True)
     description = models.CharField(max_length=500, null=True, blank=True)
     interval = models.IntegerField(default=1)
-    status = models.CharField(choices=CHOICE, default='OFF', max_length=20)
+    status = models.CharField(choices=CHOICE, default='pending', max_length=20)
     times = ArrayField(JSONField(null=True, blank=True, default=default_time), null=True, blank=True)
     tomato = models.FloatField(default=25)
     is_bubble = models.BooleanField(default=False)
@@ -66,6 +66,8 @@ class Task(BaseModel):
     parent = models.ForeignKey('self', related_name="children", on_delete=models.SET_NULL, null=True, blank=True)
     board = models.ForeignKey(Board, related_name="tasks", on_delete=models.SET_NULL, null=True, blank=True)
 
+    take_time = models.FloatField(default=0)
+
 
 class Tracking(models.Model):
     # Time to deep work
@@ -74,10 +76,11 @@ class Tracking(models.Model):
     # Total task work done
     # Total task skipped
     user = models.ForeignKey(User, related_name="tracking", on_delete=models.CASCADE)
-    ws = models.ForeignKey(Workspace, related_name="tracking", on_delete=models.SET_NULL, null=True, blank=True)
     # time_start
     # time_stop
+    # time_taken
     # task
+    # ws
     data = ArrayField(JSONField(null=True, blank=True), null=True, blank=True)
-    date_record = models.DateTimeField(default=timezone.now)
+    date_record = models.DateField(default=timezone.now)
     time_zone = models.IntegerField(default=0)

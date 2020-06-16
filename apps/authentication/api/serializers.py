@@ -8,7 +8,7 @@ from rest_auth.registration.serializers import RegisterSerializer
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
-        fields = ['id', 'media', 'bio', 'nick', 'setting', 'extra', 'links']
+        fields = ['id', 'media', 'bio', 'nick', 'setting', 'extra', 'links', 'time_zone']
 
     def to_representation(self, instance):
         self.fields['media'] = MediaSerializer(read_only=True)

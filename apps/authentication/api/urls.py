@@ -9,6 +9,7 @@ router.register(r'users', views.UserViewSet)
 
 urlpatterns = [
     path('users/me/', views.UserExt.get_request_user),
+    url(r'^users/(?P<pk>[0-9]+)/reports/$', views.report),
     path('obtain-token/', obtain_jwt_token),
     path('refresh-token/', refresh_jwt_token),
     path('rest-auth/', include('rest_auth.urls')),

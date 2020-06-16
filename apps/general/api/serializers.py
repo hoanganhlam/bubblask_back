@@ -32,10 +32,11 @@ class WSSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.Workspace
-        fields = ['id', 'name', 'code', 'user', 'settings', 'isPrivate', 'board']
+        fields = ['id', 'name', 'code', 'user', 'settings', 'isPrivate', 'board', 'report']
         extra_kwargs = {
             'code': {'read_only': True},
-            'user': {'read_only': True}
+            'user': {'read_only': True},
+            'report': {'read_only': True}
         }
 
     def to_representation(self, instance):
