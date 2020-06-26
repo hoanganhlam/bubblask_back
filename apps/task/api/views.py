@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 from django.utils.dateparse import parse_datetime
 from utils.pusher import pusher_client
 
+
 class BoardViewSet(viewsets.ModelViewSet):
     models = models.Board
     queryset = models.objects.order_by('-id')
@@ -134,8 +135,7 @@ class TaskViewSet(viewsets.ModelViewSet):
             instance._prefetched_objects_cache = {}
         new_stt = instance.status
         # Start Tracking
-        if old_stt != new_stt and instance.children.count() == 0:
-            print("A")
+        if old_stt != 'pending' and old_stt != new_stt and instance.children.count() == 0:
             now = timezone.now()
             ws = None
             user_tz = request.user.profile.time_zone
@@ -143,8 +143,7 @@ class TaskViewSet(viewsets.ModelViewSet):
             local_date = local_time.date()
             if request.data.get("ws"):
                 ws = Workspace.objects.get(pk=int(request.data.get("ws")))
-            tracking = models.Tracking.objects.filter(user=request.user, time_zone=user_tz,
-                                                      date_record=local_date).first()
+            tracking = models.Tracking.objects.filter(user=request.user, time_zone=user_tz, date_record=local_date).first()
             if tracking is None:
                 tracking = models.Tracking(user=request.user, time_zone=user_tz, date_record=local_date)
             if tracking.data is None:
@@ -161,7 +160,8 @@ class TaskViewSet(viewsets.ModelViewSet):
                             instance.save()
                         if request.user.profile.extra is None:
                             request.user.profile.extra = {}
-                        request.user.profile.extra["temp_score"] = request.user.profile.extra.get("temp_score", 0) + time_taken
+                        request.user.profile.extra["temp_score"] = request.user.profile.extra.get("temp_score",
+                                                                                                  0) + time_taken
                         if ws is not None:
                             if ws.report is None:
                                 ws.report = {}
