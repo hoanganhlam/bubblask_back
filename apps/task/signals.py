@@ -15,9 +15,10 @@ def board_created(sender, instance, created, **kwargs):
             instance.save()
     else:
         ws = instance.ws
-        ws.name = instance.title
-        is_public = instance.settings.get("is_public", False)
-        if not is_public and instance.settings.get("password"):
-            ws.password = instance.settings.get("password")
-        ws.is_public = is_public
-        ws.save()
+        if ws:
+            ws.name = instance.title
+            is_public = instance.settings.get("is_public", False)
+            if not is_public and instance.settings.get("password"):
+                ws.password = instance.settings.get("password")
+            ws.is_public = is_public
+            ws.save()
