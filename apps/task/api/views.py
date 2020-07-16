@@ -17,7 +17,7 @@ from utils.pusher import pusher_client
 
 class BoardViewSet(viewsets.ModelViewSet):
     models = models.Board
-    queryset = models.objects.order_by('-id')
+    queryset = models.objects.order_by('-id').prefetch_related("hash_tags", "media")
     serializer_class = serializers.BoardSerializer
     permission_classes = permissions.AllowAny,
     pagination_class = pagination.Pagination
@@ -30,7 +30,7 @@ class BoardViewSet(viewsets.ModelViewSet):
         tag = request.GET.get("tag")
         is_only_user = request.GET.get("only_user")
         if tag:
-            q = q & Q(hash_tags=int(tag))
+            q = q & Q(hash_tags__id=int(tag))
         if is_only_user == "true" and request.user.is_authenticated:
             q = q & Q(user=request.user)
         elif is_only_user != "true":
@@ -57,9 +57,7 @@ class BoardViewSet(viewsets.ModelViewSet):
         if text_tags:
             data["hash_tags"] = []
             for text_tag in text_tags:
-                print(vi_slug(text_tag))
                 hash_tag = HashTag.objects.filter(slug=vi_slug(text_tag)).first()
-                print(hash_tag)
                 if hash_tag is None:
                     hash_tag = HashTag(title=text_tag, for_models=["board"])
                     hash_tag.save()
@@ -143,7 +141,8 @@ class TaskViewSet(viewsets.ModelViewSet):
             local_date = local_time.date()
             if request.data.get("ws"):
                 ws = Workspace.objects.get(pk=int(request.data.get("ws")))
-            tracking = models.Tracking.objects.filter(user=request.user, time_zone=user_tz, date_record=local_date).first()
+            tracking = models.Tracking.objects.filter(user=request.user, time_zone=user_tz,
+                                                      date_record=local_date).first()
             if tracking is None:
                 tracking = models.Tracking(user=request.user, time_zone=user_tz, date_record=local_date)
             if tracking.data is None:

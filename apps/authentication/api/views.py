@@ -140,7 +140,7 @@ def report(request, pk):
     accurate_estimates_arr = list(
         map(lambda x: abs(60 * x.tomato * x.interval - x.take_time) / 60 * x.tomato * x.interval,
             list(complete_tasks)))
-    mean_accurate_estimates = sum(accurate_estimates_arr) / len(accurate_estimates_arr)
+    mean_accurate_estimates = sum(accurate_estimates_arr) / len(accurate_estimates_arr) if len(accurate_estimates_arr) > 0 else 0
     return Response({
         "total_task_done": complete_tasks.count(),
         "total_task_delay": tasks.filter(status="stopped").count(),
