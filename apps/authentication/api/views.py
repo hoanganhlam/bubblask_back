@@ -16,6 +16,8 @@ from rest_framework import status
 from rest_framework import serializers
 from apps.task.models import Tracking, Task
 from utils.pusher import pusher_client
+from utils.other import get_paginator
+from django.db import connection
 
 jwt_payload_handler = api_settings.JWT_PAYLOAD_HANDLER
 jwt_encode_handler = api_settings.JWT_ENCODE_HANDLER
@@ -30,11 +32,24 @@ class UserViewSet(viewsets.ModelViewSet):
     filter_backends = [OrderingFilter]
     search_fields = ['first_name', 'last_name', 'username']
     lookup_field = 'username'
-    lookup_value_regex = '[\w.@+-]+'
+    lookup_value_regex = "[\w.@+-]+"
 
     def list(self, request, *args, **kwargs):
-        self.serializer_class = UserReportSerializer
-        return super(UserViewSet, self).list(request, *args, **kwargs)
+        p = get_paginator(request)
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT FETCH_USERS(%s, %s, %s, %s)",
+                           [
+                               p.get("page_size"),
+                               p.get("offs3t"),
+                               p.get("search"),
+                               request.user.id if request.user.is_authenticated else None
+                           ])
+            result = cursor.fetchone()[0]
+            if result.get("results") is None:
+                result["results"] = []
+            cursor.close()
+            connection.close()
+            return Response(result)
 
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', True)
@@ -140,7 +155,8 @@ def report(request, pk):
     accurate_estimates_arr = list(
         map(lambda x: abs(60 * x.tomato * x.interval - x.take_time) / 60 * x.tomato * x.interval,
             list(complete_tasks)))
-    mean_accurate_estimates = sum(accurate_estimates_arr) / len(accurate_estimates_arr) if len(accurate_estimates_arr) > 0 else 0
+    mean_accurate_estimates = sum(accurate_estimates_arr) / len(accurate_estimates_arr) if len(
+        accurate_estimates_arr) > 0 else 0
     return Response({
         "total_task_done": complete_tasks.count(),
         "total_task_delay": tasks.filter(status="stopped").count(),

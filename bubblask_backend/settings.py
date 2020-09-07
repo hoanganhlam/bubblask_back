@@ -104,7 +104,7 @@ DATABASES = {
     'NAME': os.getenv('POSTGRES_DBNAME', 'bubblask'),
     'USER': os.getenv('POSTGRES_USER', 'lam'),
     'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'HoangAnhLam@no99a'),
-    'HOST': os.getenv('POSTGRES_HOST', 'localhost'),
+    'HOST': os.getenv('POSTGRES_HOST', '209.97.166.85'),
     'PORT': os.getenv('POSTGRES_PORT', '5432'),
   }
 }

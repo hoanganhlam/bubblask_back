@@ -10,9 +10,11 @@ from django.db.models import Q
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.utils import timezone
-from datetime import datetime, timedelta
+from datetime import timedelta
 from django.utils.dateparse import parse_datetime
 from utils.pusher import pusher_client
+from utils.other import get_paginator
+from django.db import connection
 
 
 class BoardViewSet(viewsets.ModelViewSet):
@@ -26,17 +28,25 @@ class BoardViewSet(viewsets.ModelViewSet):
     lookup_field = 'slug'
 
     def list(self, request, *args, **kwargs):
-        q = Q()
-        tag = request.GET.get("tag")
-        is_only_user = request.GET.get("only_user")
-        if tag:
-            q = q & Q(hash_tags__id=int(tag))
-        if is_only_user == "true" and request.user.is_authenticated:
-            q = q & Q(user=request.user)
-        elif is_only_user != "true":
-            q = q & Q(is_interface=True)
-        self.queryset = self.queryset.filter(q)
-        return super(BoardViewSet, self).list(request, *args, **kwargs)
+        p = get_paginator(request)
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT FETCH_BOARDS(%s, %s, %s, %s, %s, %s, %s, %s)",
+                           [
+                               p.get("page_size"),
+                               p.get("offs3t"),
+                               p.get("search"),
+                               request.user.id if request.user.is_authenticated else None,
+                               '{' + request.GET.get('hash_tags') + '}' if request.GET.get('hash_tags') else None,
+                               p.get("board", None),
+                               request.GET.get("is_interface", None),
+                               request.GET.get("user", None)
+                           ])
+            result = cursor.fetchone()[0]
+            if result.get("results") is None:
+                result["results"] = []
+            cursor.close()
+            connection.close()
+            return Response(result)
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
@@ -91,22 +101,25 @@ class TaskViewSet(viewsets.ModelViewSet):
     lookup_field = 'pk'
 
     def list(self, request, *args, **kwargs):
-        board_id = request.GET.get("board")
-        if board_id is None:
-            if request.user.is_authenticated:
-                queryset = models.Task.objects.filter(
-                    user=request.user,
-                    status__in=["pending", "stopping", "running"],
-                    is_bubble=False,
-                    board=None
-                ).order_by('-id')
-                return Response(serializers.TaskSerializer(queryset, many=True).data)
-        else:
-            queryset = models.Task.objects.filter(
-                board_id=int(board_id)
-            ).order_by('-id')
-            return Response(serializers.TaskSerializer(queryset, many=True).data)
-        return Response([])
+        p = get_paginator(request)
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT FETCH_TASKS(%s, %s, %s, %s, %s, %s, %s, %s)",
+                           [
+                               p.get("page_size"),
+                               p.get("offs3t"),
+                               p.get("search"),
+                               request.user.id if request.user.is_authenticated else None,
+                               request.GET.get("board", None),
+                               '{' + request.GET.get('statuses') + '}' if request.GET.get('statuses') else None,
+                               request.GET.get("user", None),
+                               request.GET.get("parent", None)
+                           ])
+            result = cursor.fetchone()[0]
+            if result.get("results") is None:
+                result["results"] = []
+            cursor.close()
+            connection.close()
+            return Response(result)
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
