@@ -131,6 +131,7 @@ class TaskViewSet(viewsets.ModelViewSet):
                 instance.status = 'stopped'
             elif instance.status in ['complete', 'stopped']:
                 instance.db_status = -1
+                instance.save()
             else:
                 instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
