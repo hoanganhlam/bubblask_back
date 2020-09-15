@@ -3,10 +3,9 @@ from rest_framework.filters import OrderingFilter, SearchFilter
 from base import pagination
 from . import serializers
 from apps.task import models
-from apps.general.models import HashTag, Workspace
+from apps.general.models import HashTag
 from rest_framework import status
 from utils.slug import vi_slug
-from django.db.models import Q
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.utils import timezone
@@ -15,6 +14,27 @@ from django.utils.dateparse import parse_datetime
 from utils.pusher import pusher_client
 from utils.other import get_paginator
 from django.db import connection
+
+
+def fetch_board(boar_id):
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT FETCH_BOARD(%s, %s)", [
+            int(boar_id) if str(boar_id).isnumeric() else None,
+            str(boar_id),
+        ])
+        out = cursor.fetchone()[0]
+    return Response(out)
+
+
+def fetch_task(task_id):
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT FETCH_TASK(%s)", [
+            task_id
+        ])
+        result = cursor.fetchone()[0]
+        cursor.close()
+        connection.close()
+        return Response(status=status.HTTP_200_OK, data=result)
 
 
 class BoardViewSet(viewsets.ModelViewSet):
@@ -26,11 +46,12 @@ class BoardViewSet(viewsets.ModelViewSet):
     filter_backends = [OrderingFilter, SearchFilter]
     search_fields = ['title', 'description']
     lookup_field = 'slug'
+    lookup_value_regex = '[\w.@+-]+'
 
     def list(self, request, *args, **kwargs):
         p = get_paginator(request)
         with connection.cursor() as cursor:
-            cursor.execute("SELECT FETCH_BOARDS(%s, %s, %s, %s, %s, %s, %s, %s)",
+            cursor.execute("SELECT FETCH_BOARDS(%s, %s, %s, %s, %s, %s, %s, %s, %s)",
                            [
                                p.get("page_size"),
                                p.get("offs3t"),
@@ -38,7 +59,8 @@ class BoardViewSet(viewsets.ModelViewSet):
                                request.user.id if request.user.is_authenticated else None,
                                '{' + request.GET.get('hash_tags') + '}' if request.GET.get('hash_tags') else None,
                                p.get("board", None),
-                               request.GET.get("is_interface", None),
+                               '{' + request.GET.get('kinds') + '}' if request.GET.get('kinds') else None,
+                               request.GET.get("is_private", None),
                                request.GET.get("user", None)
                            ])
             result = cursor.fetchone()[0]
@@ -50,6 +72,12 @@ class BoardViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return fetch_board(serializer.data.get("id"))
 
     def update(self, request, *args, **kwargs):
         data = request.data
@@ -81,13 +109,16 @@ class BoardViewSet(viewsets.ModelViewSet):
             # If 'prefetch_related' has been applied to a queryset, we need to
             # forcibly invalidate the prefetch cache on the instance.
             instance._prefetched_objects_cache = {}
-        return Response(serializer.data)
+        return fetch_board(serializer.data.get("id"))
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         if request.user and (request.user.id == instance.user.id) or request.user.is_staff:
             instance.save(db_status=-1)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def retrieve(self, request, *args, **kwargs):
+        return fetch_board(kwargs["slug"])
 
 
 class TaskViewSet(viewsets.ModelViewSet):
@@ -122,24 +153,56 @@ class TaskViewSet(viewsets.ModelViewSet):
             return Response(result)
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        serializer.save(user=self.request.user, assignee=self.request.user)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return fetch_task(serializer.data.get("id"))
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         if request.user and (request.user.id == instance.user.id) or request.user.is_staff:
+            flag = False
             if instance.status in ['stopping', 'running']:
                 instance.status = 'stopped'
+                flag = True
             elif instance.status in ['complete', 'stopped']:
                 instance.db_status = -1
+                flag = True
             else:
                 instance.delete()
-            instance.save()
+            if flag:
+                instance.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def update(self, request, *args, **kwargs):
+        errs = []
+        user = request.user
         partial = kwargs.pop('partial', True)
         instance = self.get_object()
+
+        # CHECK
+        if not user.is_authenticated or not (user == instance.user or user == instance.assignee):
+            errs.append("UNAUTHORISED")
         old_stt = instance.status
+        old_assignee = instance.assignee
+        if old_assignee is not None:
+            if user != old_assignee:
+                errs.append("UNAUTHORISED")
+            if old_assignee.id != request.data.get("assignee") and user != instance.user:
+                errs.append("UNAUTHORISED")
+            # if old_assignee.id != request.data.get("assignee") and user == instance.user:
+        else:
+            if user == instance.user or (instance.settings is not None and instance.settings.get("collaborate")):
+                instance.assignee = user
+            else:
+                errs.append("UNAUTHORISED")
+        if len(errs) > 0:
+            return Response(status=status.HTTP_400_BAD_REQUEST, data=errs)
+        # FINISH CHECK
+
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
@@ -149,18 +212,22 @@ class TaskViewSet(viewsets.ModelViewSet):
         # Start Tracking
         if old_stt != 'pending' and old_stt != new_stt and instance.children.count() == 0:
             now = timezone.now()
-            ws = None
-            user_tz = request.user.profile.time_zone
+            user_tz = user.profile.time_zone
             local_time = now + timedelta(hours=user_tz)
             local_date = local_time.date()
-            if request.data.get("ws"):
-                ws = Workspace.objects.get(pk=int(request.data.get("ws")))
-            tracking = models.Tracking.objects.filter(user=request.user, time_zone=user_tz,
-                                                      date_record=local_date).first()
+            tracking = models.Tracking.objects.filter(
+                user=user,
+                time_zone=user_tz,
+                board_id=user.profile.get("board") if user.profile and user.profile.get("board") else None,
+                date_record=local_date).first()
             if tracking is None:
-                tracking = models.Tracking(user=request.user, time_zone=user_tz, date_record=local_date)
+                tracking = models.Tracking(user=user, time_zone=user_tz, date_record=local_date)
+                if user.profile.get("board"):
+                    b = models.Board.objects.get(pk=user.profile.get("board"))
+                    tracking.board = b
             if tracking.data is None:
                 tracking.data = []
+
             if request.data.get("status") in ["complete", "stopping", "stopped"]:
                 if len(tracking.data) > 0:
                     if tracking.data[len(tracking.data) - 1]:
@@ -171,19 +238,13 @@ class TaskViewSet(viewsets.ModelViewSet):
                         if request.data.get("status") == "complete":
                             instance.take_time = sum(c.get("time_taken", 0) for c in tracking.data)
                             instance.save()
-                        if request.user.profile.extra is None:
-                            request.user.profile.extra = {}
-                        request.user.profile.extra["temp_score"] = request.user.profile.extra.get("temp_score",
-                                                                                                  0) + time_taken
-                        if ws is not None:
-                            if ws.report is None:
-                                ws.report = {}
-                            ws.report[request.user.id] = ws.report.get(str(request.user.id), 0) + time_taken
-                            pusher_client.trigger('ws_' + str(ws.id), 'change-user-score', {
-                                "user": request.user.id,
-                                "score": ws.report.get(str(request.user.id), 0) + time_taken
-                            })
-                            ws.save()
+                        if user.profile.extra is None:
+                            user.profile.extra = {}
+                        user.profile.extra["temp_score"] = user.profile.extra.get("temp_score", 0) + time_taken
+                        pusher_client.trigger('board_' + str(user.profile.get("board")), 'change-user-score', {
+                            "user": request.user.id,
+                            "score": time_taken
+                        })
                         request.user.profile.save()
             elif request.data.get("status") == "running":
                 tracking.data.append({
@@ -191,10 +252,10 @@ class TaskViewSet(viewsets.ModelViewSet):
                     "time_stop": None,
                     "time_taken": 0,
                     "task": instance.id,
-                    "ws": ws.id if ws is not None else None
                 })
             tracking.save()
-        return Response(serializer.data)
+        # End tracking
+        return fetch_task(instance.id)
 
 
 @api_view(['POST'])
@@ -244,3 +305,70 @@ def clone_board(request, pk):
         new_board.settings["task_order"] = new_task_order
         new_board.save()
     return Response(serializers.BoardSerializer(new_board).data)
+
+
+@api_view(['POST'])
+def join_board(request, pk):
+    board = models.Board.objects.get(pk=pk)
+    password = request.data.get("password")
+    if request.user:
+        current_board = request.user.profile.setting.get("board", None)
+        if request.user in board.members.all() and current_board is not None and int(current_board) == board.id:
+            flag = True
+            msg = "OUT_COMPLETE"
+        elif request.user.id == board.user.id or (not board.is_private) or (
+            board.is_private and board.password == password):
+            flag = True
+            msg = "JOIN_COMPLETE"
+        else:
+            flag = False
+            msg = "JOIN_FAILED"
+        board.save()
+        if request.user.profile.setting is None:
+            request.user.profile.setting = {}
+
+        if msg == "JOIN_COMPLETE":
+            check = models.BoardMember.objects.filter(user=request.user, board=board).first()
+            if check is None:
+                models.BoardMember.objects.create(user=request.user, board=board)
+            request.user.profile.setting["board"] = pk
+        elif msg == "JOIN_FAILED" or msg == "OUT_COMPLETE":
+            if request.data.get("force_out"):
+                models.BoardMember.objects.filter(user=request.user, board=board).delete()
+            request.user.profile.setting["board"] = None
+        request.user.profile.save()
+    else:
+        flag = False
+        msg = "REQUIRE_LOGIN"
+    return Response({
+        "status": flag,
+        "msg": msg
+    })
+
+
+@api_view(['GET'])
+def board_members(request, pk):
+    fields = request.GET.get("fields", 'user,board').split(",")
+    p = get_paginator(request)
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT FETCH_MEMBERS(%s, %s, %s, %s, %s)",
+                       [
+                           p.get("page_size"),
+                           p.get("offs3t"),
+                           p.get("search"),
+                           None,
+                           pk
+                       ])
+        result = cursor.fetchone()[0]
+        if result.get("results") is None:
+            result["results"] = []
+        temp = result["results"]
+        result["results"] = []
+        for r in temp:
+            new_result = {}
+            for field in fields:
+                new_result[field] = r.get(field)
+            result["results"].append(new_result)
+        cursor.close()
+        connection.close()
+        return Response(result)

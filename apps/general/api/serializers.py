@@ -24,33 +24,3 @@ class BoardSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         return super(BoardSerializer, self).to_representation(instance)
-
-
-class WSSerializer(serializers.ModelSerializer):
-    isPrivate = serializers.SerializerMethodField()
-    board = serializers.SerializerMethodField()
-
-    class Meta:
-        model = models.Workspace
-        fields = ['id', 'name', 'code', 'user', 'settings', 'isPrivate', 'board', 'report']
-        extra_kwargs = {
-            'code': {'read_only': True},
-            'user': {'read_only': True},
-            'report': {'read_only': True}
-        }
-
-    def to_representation(self, instance):
-        self.fields['user'] = UserSerializer(read_only=True)
-        return super(WSSerializer, self).to_representation(instance)
-
-    def get_board(self, instance):
-        if hasattr(instance, 'board'):
-            return BoardSerializer(instance.board).data
-        else:
-            return None
-
-    def get_isPrivate(self, instance):
-        if instance.password is not None:
-            return True
-        else:
-            return False

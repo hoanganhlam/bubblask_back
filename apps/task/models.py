@@ -3,7 +3,7 @@ from base.interface import BaseModel
 from django.contrib.auth.models import User
 from django.contrib.postgres.fields import ArrayField, JSONField
 from django.utils.translation import ugettext_lazy as _
-from apps.general.models import HashTag, Workspace
+from apps.general.models import HashTag
 from apps.media.models import Media
 from utils.slug import unique_slugify
 from django.utils import timezone
@@ -25,20 +25,28 @@ class Board(BaseModel):
     title = models.CharField(max_length=200, null=True, blank=True)
     description = models.CharField(max_length=500, null=True, blank=True)
     slug = models.CharField(max_length=200, blank=True)
+    kind = models.CharField(max_length=50, default="DEFAULT")  # GHOST, DEFAULT, TEMPLATE
+
+    is_private = models.BooleanField(default=False)
+    password = models.CharField(max_length=500, null=True, blank=True)
+
     settings = JSONField(null=True, blank=True)
-    is_interface = models.BooleanField(default=False)
     media = models.ForeignKey(Media, on_delete=models.SET_NULL, related_name="boards", null=True, blank=True)
     hash_tags = models.ManyToManyField(HashTag, related_name="boards", blank=True)
     user = models.ForeignKey(User, related_name="boards", on_delete=models.CASCADE)
     parent = models.ForeignKey('self', related_name="children", on_delete=models.SET_NULL, null=True, blank=True)
-    members = models.ManyToManyField(User, blank=True, related_name="member_boards")
-    ws = models.OneToOneField(Workspace, related_name="board", on_delete=models.SET_NULL, null=True, blank=True)
+    members = models.ManyToManyField(User, through="BoardMember", related_name="member_boards", blank=True)
 
     def save(self, **kwargs):
         # generate unique slug
         if hasattr(self, 'slug') and self.slug is None or self.slug == '':
             unique_slugify(self, self.title)
         super(Board, self).save(**kwargs)
+
+
+class BoardMember(BaseModel):
+    user = models.ForeignKey(User, related_name="board_members", on_delete=models.CASCADE)
+    board = models.ForeignKey(Board, related_name="board_members", on_delete=models.CASCADE)
 
 
 class Task(BaseModel):
@@ -76,6 +84,7 @@ class Tracking(models.Model):
     # Total task work done
     # Total task skipped
     user = models.ForeignKey(User, related_name="tracking", on_delete=models.CASCADE)
+    board = models.ForeignKey(Board, related_name="tracking", on_delete=models.CASCADE, null=True, blank=True)
     # time_start
     # time_stop
     # time_taken
