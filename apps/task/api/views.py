@@ -218,12 +218,12 @@ class TaskViewSet(viewsets.ModelViewSet):
             tracking = models.Tracking.objects.filter(
                 user=user,
                 time_zone=user_tz,
-                board_id=user.profile.get("board") if user.profile and user.profile.get("board") else None,
+                board_id=user.profile.setting.get("board") if user.profile is not None and user.profile.setting.get("board") else None,
                 date_record=local_date).first()
             if tracking is None:
                 tracking = models.Tracking(user=user, time_zone=user_tz, date_record=local_date)
-                if user.profile.get("board"):
-                    b = models.Board.objects.get(pk=user.profile.get("board"))
+                if user.profile and user.profile and user.profile.setting.get("board"):
+                    b = models.Board.objects.get(pk=user.profile.setting.get("board"))
                     tracking.board = b
             if tracking.data is None:
                 tracking.data = []
@@ -241,7 +241,7 @@ class TaskViewSet(viewsets.ModelViewSet):
                         if user.profile.extra is None:
                             user.profile.extra = {}
                         user.profile.extra["temp_score"] = user.profile.extra.get("temp_score", 0) + time_taken
-                        pusher_client.trigger('board_' + str(user.profile.get("board")), 'change-user-score', {
+                        pusher_client.trigger('board_' + str(user.profile.setting.get("board")), 'change-user-score', {
                             "user": request.user.id,
                             "score": time_taken
                         })
@@ -369,6 +369,25 @@ def board_members(request, pk):
             for field in fields:
                 new_result[field] = r.get(field)
             result["results"].append(new_result)
+        cursor.close()
+        connection.close()
+        return Response(result)
+
+
+@api_view(['GET'])
+def board_messages(request, pk):
+    p = get_paginator(request)
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT FETCH_MESSAGES(%s, %s, %s, %s)",
+                       [
+                           p.get("page_size"),
+                           p.get("offs3t"),
+                           p.get("search"),
+                           "board_" + str(pk)
+                       ])
+        result = cursor.fetchone()[0]
+        if result.get("results") is None:
+            result["results"] = []
         cursor.close()
         connection.close()
         return Response(result)

@@ -11,4 +11,5 @@ urlpatterns = [
     url(r'^boards/(?P<pk>[0-9]+)/clone/$', views.clone_board),
     url(r'^boards/(?P<pk>[0-9]+)/join/$', views.join_board),
     url(r'^boards/(?P<pk>[0-9]+)/members/$', views.board_members),
+    url(r'^boards/(?P<pk>[0-9]+)/messages/$', views.board_messages),
 ]

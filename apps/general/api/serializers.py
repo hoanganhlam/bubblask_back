@@ -1,7 +1,6 @@
 from apps.general import models
 from rest_framework import serializers
 from apps.authentication.api.serializers import UserSerializer
-from apps.task.models import Board
 
 
 class HashTagSerializer(serializers.ModelSerializer):
@@ -16,11 +15,14 @@ class HashTagSerializer(serializers.ModelSerializer):
         return super(HashTagSerializer, self).to_representation(instance)
 
 
-class BoardSerializer(serializers.ModelSerializer):
+class MessageSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Board
-        fields = ['id', 'title', 'slug', 'settings']
-        extra_kwargs = {}
+        model = models.Message
+        fields = ['id', 'user', 'room', 'msg', 'created']
+        extra_kwargs = {
+            'user': {'read_only': True}
+        }
 
     def to_representation(self, instance):
-        return super(BoardSerializer, self).to_representation(instance)
+        self.fields['user'] = UserSerializer(read_only=True)
+        return super(MessageSerializer, self).to_representation(instance)
