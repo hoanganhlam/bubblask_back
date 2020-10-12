@@ -100,6 +100,7 @@ class BoardViewSet(viewsets.ModelViewSet):
                     hash_tag = HashTag(title=text_tag, for_models=["board"])
                     hash_tag.save()
                 data["hash_tags"].append(hash_tag.id)
+
         instance.save()
         serializer = self.get_serializer(instance, data=data, partial=partial)
         serializer.is_valid(raise_exception=True)
@@ -114,7 +115,8 @@ class BoardViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         if request.user and (request.user.id == instance.user.id) or request.user.is_staff:
-            instance.save(db_status=-1)
+            instance.db_status = -1
+            instance.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def retrieve(self, request, *args, **kwargs):
@@ -218,7 +220,8 @@ class TaskViewSet(viewsets.ModelViewSet):
             tracking = models.Tracking.objects.filter(
                 user=user,
                 time_zone=user_tz,
-                board_id=user.profile.setting.get("board") if user.profile is not None and user.profile.setting.get("board") else None,
+                board_id=user.profile.setting.get("board") if user.profile is not None and user.profile.setting.get(
+                    "board") else None,
                 date_record=local_date).first()
             if tracking is None:
                 tracking = models.Tracking(user=user, time_zone=user_tz, date_record=local_date)
